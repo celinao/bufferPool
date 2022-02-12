@@ -41,14 +41,53 @@ BufMgr::BufMgr(std::uint32_t bufs)
 
 void BufMgr::advanceClock() {
   clockHand += 1; // Advances clockHand by 1
-  if(clockHand == numBufs){ // Checks if clockHand has exceeded number of frames and resets. 
-    clockHand = 0; 
+  if(clockHand == numBufs){ // Checks if clockHand has exceeded number of frames and resets.
+    clockHand = 0;
   }
 } // Celina
 
-void BufMgr::allocBuf(FrameId& frame) {} // Ath
 
-void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {} 
+void BufMgr::allocBuf(FrameId& frame) {
+  int pinned_num = 0; // Keeps track of no.of pinned frames.
+
+  while (pinned_num < numBufs) {
+    //advanceClock();
+    // Uses clock policy
+    // If frame doesn't have a valid page, we can allocate directly.
+    if (bufDescTable[clockHand].valid == false) {
+      frame = bufDescTable[clockHand].frameNo;
+      return;
+    }
+    // If frame contains a valid page, check for refbit.
+    if (bufDescTable[clockHand].refbit == true) {
+      bufDescTable[clockHand].refbit = false;
+      advanceClock();
+    }
+    else {
+      // Increment pinned counter and clock if pinCnt is not 0.
+      if (bufDescTable[clockHand].pinCnt > 0) {
+        pinned_num++;
+        advanceClock();
+      }
+      // Flush before allocating frame if dirty and unpinned.
+      else if (bufDescTable[clockHand].dirty == true) {
+        flushFile(bufDescTable[clockHand].file);
+        frame = bufDescTable[clockHand].frameNo;
+        return;
+      }
+      // Unpinned and unmodified frame can be allocated directly.
+      if (bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty == false) {
+        frame = bufDescTable[clockHand].frameNo;
+        return;
+      }
+    }
+  }
+
+  throw BufferExceededException();
+} // Atharva
+
+
+void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {}
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
 
