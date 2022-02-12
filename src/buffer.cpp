@@ -48,7 +48,7 @@ void BufMgr::advanceClock() {
 
 
 void BufMgr::allocBuf(FrameId& frame) {
-  int pinned_num = 0; // Keeps track of no.of pinned frames.
+  std::uint32_t pinned_num = 0; // Keeps track of no.of pinned frames.
 
   while (pinned_num < numBufs) {
     //advanceClock();
