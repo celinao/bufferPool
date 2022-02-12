@@ -38,15 +38,21 @@ BufMgr::BufMgr(std::uint32_t bufs)
   clockHand = bufs - 1;
 }
 
-void BufMgr::advanceClock() {}
 
-void BufMgr::allocBuf(FrameId& frame) {}
+void BufMgr::advanceClock() {
+  clockHand += 1; // Advances clockHand by 1
+  if(clockHand == numBufs){ // Checks if clockHand has exceeded number of frames and resets. 
+    clockHand = 0; 
+  }
+} // Celina
 
-void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {}
+void BufMgr::allocBuf(FrameId& frame) {} // Ath
+
+void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {} 
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
 
-void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {}
+void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {} // Alex
 
 void BufMgr::flushFile(File& file) {}
 
