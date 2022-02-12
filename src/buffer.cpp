@@ -87,7 +87,30 @@ void BufMgr::allocBuf(FrameId& frame) {
 } // Atharva
 
 
-void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {}
+void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
+  // Reads page??? idk how in depth it wants us to read it. 
+
+  std::cout << "readPage: " << endl;
+  uint32_t startingClockHand = clockHand;
+  advanceClock();
+
+  // Check each frame to see if Page is in buffer. & return pointer to page's frame
+  //Not sure if this works while one is FrameId and one is uint32_t
+  while(startingClockHand != clockHand){ 
+    try{
+      hashTable.lookup(file, pageNo, clockHand);
+      // page should now be the correct reference. But idk if lookup changes 
+      // pageNo or if that needs to be done again. 
+      return; 
+    }catch(const HashNotFoundException &e){
+      advanceClock();
+    }
+  }
+
+  // Allocate new frame from buffer pool. Return pointer for frame. 
+  // I'm having difficulty calling allocPage but I think it should be called here?
+  // allocPage(file, *pageNo, page); maybe allocBuf???
+} 
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
 
