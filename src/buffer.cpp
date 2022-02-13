@@ -40,8 +40,11 @@ BufMgr::BufMgr(std::uint32_t bufs)
 
 
 void BufMgr::advanceClock() {
-  clockHand += 1; // Advances clockHand by 1
-  if(clockHand == numBufs){ // Checks if clockHand has exceeded number of frames and resets.
+  // Advances clockHand by 1
+  clockHand += 1; 
+
+  // Checks if clockHand has exceeded number of frames and resets.
+  if(clockHand == numBufs){ 
     clockHand = 0;
   }
 } // Celina
@@ -90,26 +93,34 @@ void BufMgr::allocBuf(FrameId& frame) {
 void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
   // Reads page??? idk how in depth it wants us to read it. 
 
-  std::cout << "readPage: " << endl;
   uint32_t startingClockHand = clockHand;
   advanceClock();
 
-  // Check each frame to see if Page is in buffer. & return pointer to page's frame
-  //Not sure if this works while one is FrameId and one is uint32_t
+  // Case 2: Frame is already in buffer pool
+  // Not sure if this works while one is FrameId and one is uint32_t
   while(startingClockHand != clockHand){ 
     try{
       hashTable.lookup(file, pageNo, clockHand);
-      // page should now be the correct reference. But idk if lookup changes 
-      // pageNo or if that needs to be done again. 
+
+      // Sets refbit to true & increments pinCnt
+      bufDescTable[clockHand].refbit = true;
+      bufDescTable[clockHand].pinCnt += 1;
+      
+      // Sets page to equal a pointer to the frame containing the page
+      // IDK how to do that. 
       return; 
     }catch(const HashNotFoundException &e){
       advanceClock();
     }
   }
 
-  // Allocate new frame from buffer pool. Return pointer for frame. 
-  // I'm having difficulty calling allocPage but I think it should be called here?
-  // allocPage(file, *pageNo, page); maybe allocBuf???
+  // Case 1: Page is not in buffer pool. 
+  allocBuf(clockHand); // allocate a buffer frame. 
+  file.readPage(pageNo); // read page from disk into buffer pool frame. 
+  hashTable.insert(file, pageNo, clockHand); // Insert page into hashtable. 
+  bufDescTable[clockHand].Set(file, pageNo); // Set up page with refBit and pinCnt
+  // return a pointer to the frame containing the page via the page parameter. 
+  // page = &bufDescTable[clockHand];
 } 
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
