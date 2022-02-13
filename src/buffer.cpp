@@ -107,7 +107,9 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
       bufDescTable[clockHand].pinCnt += 1;
       
       // Sets page to equal a pointer to the frame containing the page
-      // IDK how to do that. 
+      // IDK if this is correct. 
+      Page newPage = file.allocatePage();
+      page = &newPage;
       return; 
     }catch(const HashNotFoundException &e){
       advanceClock();
@@ -120,7 +122,8 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
   hashTable.insert(file, pageNo, clockHand); // Insert page into hashtable. 
   bufDescTable[clockHand].Set(file, pageNo); // Set up page with refBit and pinCnt
   // return a pointer to the frame containing the page via the page parameter. 
-  // page = &bufDescTable[clockHand];
+  Page newPage = file.allocatePage();
+  page = &newPage;
 } 
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
