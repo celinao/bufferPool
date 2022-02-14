@@ -82,6 +82,8 @@ void BufMgr::allocBuf(FrameId& frame) {
       }
       // Unpinned and unmodified frame can be allocated directly.
       if (bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty == false) {
+        // Need to remove the existing page before allocating new.
+        hashTable.remove(bufDescTable[clockHand].file, bufDescTable[clockHand].pageNo);
         frame = bufDescTable[clockHand].frameNo;
         return;
       }
