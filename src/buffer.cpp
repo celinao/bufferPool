@@ -132,8 +132,6 @@ void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {
 void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
   try{
     hashTable.lookup(file, pageNo, clockHand);
-    std::cout << "HASH ALREADY PRESENT" << endl;
-    bufDescTable[clockHand].Print();
     page = &bufPool[clockHand]; 
     *page = bufPool[bufDescTable[clockHand].frameNo];
     pageNo =  bufPool[bufDescTable[clockHand].frameNo].page_number();
@@ -142,20 +140,19 @@ void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
     
   }
 
+  // allocBuf() is called to obtain a buffer pool frame. 
+  allocBuf(clockHand);
+  
   // Allocate an empty page in the specified file using file.allocatePage() 
   bufPool[clockHand] = file.allocatePage();
 
-  // allocBuf() is called to obtain a buffer pool frame. 
-  allocBuf(clockHand);
-
   // entry is inserted into hashTable 
-  hashTable.insert(file, pageNo, clockHand);
+  hashTable.insert(file, bufPool[clockHand].page_number(), clockHand);
 
   // Set is invoked on the frame 
   bufDescTable[clockHand].Set(file, bufPool[clockHand].page_number());
 
   // return pageNumber of new page via pageNo & pointer to buffer frame via page parameter
-  bufDescTable[clockHand].Print();
   page = &bufPool[clockHand]; 
   *page = bufPool[clockHand];
   pageNo = bufPool[clockHand].page_number();
