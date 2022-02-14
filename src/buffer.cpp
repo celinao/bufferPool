@@ -128,7 +128,13 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
 
-void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {} // Alex
+void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
+    page = file.allocatePage(); // empty page is allocated
+    FrameID newFrame = new FrameID(); // declare new frame
+    allocBuff(newFrame); // obtain buffer pool frame
+    hashTable.insert(&file, &pageNo, newFrame); // insert new file into hash table
+    file.Set(newFrame); // set frame in hash table
+    }
 
 void BufMgr::flushFile(File& file) {}
 
