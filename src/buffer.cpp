@@ -17,6 +17,9 @@
 #include "exceptions/page_not_pinned_exception.h"
 #include "exceptions/page_pinned_exception.h"
 
+using std::cout; // the standard output
+using std::endl; // the end of line character, plus flushing the output
+
 namespace badgerdb {
 
 constexpr int HASHTABLE_SZ(int bufs) { return ((int)(bufs * 1.2) & -2) + 1; }
@@ -48,7 +51,6 @@ void BufMgr::advanceClock() {
     clockHand = 0;
   }
 } // Celina
-
 
 void BufMgr::allocBuf(FrameId& frame) {
   std::uint32_t pinned_num = 0; // Keeps track of no.of pinned frames.
@@ -87,17 +89,13 @@ void BufMgr::allocBuf(FrameId& frame) {
   }
 
   throw BufferExceededException();
-} // Atharva
-
+}
 
 void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
-  // Reads page??? idk how in depth it wants us to read it. 
-
-  uint32_t startingClockHand = clockHand;
+  FrameId startingClockHand = clockHand;
   advanceClock();
 
   // Case 2: Frame is already in buffer pool
-  // Not sure if this works while one is FrameId and one is uint32_t
   while(startingClockHand != clockHand){ 
     try{
       hashTable.lookup(file, pageNo, clockHand);
@@ -110,6 +108,7 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
       // IDK if this is correct. 
       Page newPage = file.allocatePage();
       page = &newPage;
+      // page = bufPool[bufDescTable[clockHand].frameNo];
       return; 
     }catch(const HashNotFoundException &e){
       advanceClock();
@@ -126,17 +125,67 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
   page = &newPage;
 } 
 
-void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {}
+void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {
+  try{
+    hashTable.lookup(file, pageNo, clockHand);
+    if(bufDescTable[clockHand].pinCnt == 0){
+      throw PageNotPinnedException("BufMgr::unPinPage", pageNo, clockHand);
+    }
+    if(dirty){
+      bufDescTable[clockHand].dirty = true;
+    }
+  }catch(const HashNotFoundException &e){
+
+  }
+}
 
 void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
-    page = file.allocatePage(); // empty page is allocated
-    FrameID newFrame = new FrameID(); // declare new frame
-    allocBuff(newFrame); // obtain buffer pool frame
-    hashTable.insert(&file, &pageNo, newFrame); // insert new file into hash table
-    file.Set(newFrame); // set frame in hash table
-    }
+  // Allocate an empty page in the specified file using file.allocatePage() 
+  Page newPage = file.allocatePage();
 
-void BufMgr::flushFile(File& file) {}
+  // allocBuf() is called to obtain a buffer pool frame. 
+  allocBuf(clockHand);
+
+  // entry is inserted into hashTable 
+  hashTable.insert(file, pageNo, clockHand);
+
+  // Set is invoked on the frame 
+  bufDescTable[clockHand].Set(file, newPage.page_number());
+
+  // return pageNumber of new page via pageNo & pointer to buffer frame via page parameter
+  bufDescTable[clockHand].Print();
+  page = &bufPool[clockHand]; 
+  *page = newPage;
+  pageNo = newPage.page_number();
+}
+
+void BufMgr::flushFile(File& file) {
+  for(FrameId currentFrame = 0; currentFrame < bufDescTable.size(); currentFrame++){
+    // Find all file pages in buffer pool
+    if(bufDescTable[currentFrame].file == file){
+      // Check if page is part of file 
+      if(bufDescTable[currentFrame].valid == false){
+        // Invalid Page
+        // throw BadBufferException();
+      }else if(bufDescTable[currentFrame].pinCnt > 0){
+        // Page is currently Pinned
+        // throw PagePinnedException("BufMgr::flushFile", pageNum);
+      }else if (bufDescTable[currentFrame].dirty){
+        FrameId frameNum = bufDescTable[currentFrame].frameNo;
+        // write dirty page and remove
+        bufDescTable[currentFrame].file.writePage(bufPool[frameNum]);
+        bufDescTable[currentFrame].dirty = false;
+        hashTable.remove(file, bufDescTable[currentFrame].pageNo);
+      }else{
+        // remove clean page
+        hashTable.remove(file, bufDescTable[currentFrame].pageNo);
+      }
+    }
+  }
+  
+  // Clear file from bufferpool
+  bufDescTable.clear();
+}
 
 void BufMgr::disposePage(File& file, const PageId PageNo) {}
 
