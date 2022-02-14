@@ -94,37 +94,25 @@ void BufMgr::allocBuf(FrameId& frame) {
 }
 
 void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
-  FrameId startingClockHand = clockHand;
-  advanceClock();
+  try{
+    hashTable.lookup(file, pageNo, clockHand);
+    // Case 2: Page is in buffer pool
+    bufDescTable[clockHand].refbit = true;
+    bufDescTable[clockHand].pinCnt += 1;
 
-  // Case 2: Frame is already in buffer pool
-  while(startingClockHand != clockHand){ 
-    try{
-      hashTable.lookup(file, pageNo, clockHand);
+    // Return pointer to frame containing page via page parameter. 
+    page = &bufPool[clockHand];
 
-      // Sets refbit to true & increments pinCnt
-      bufDescTable[clockHand].refbit = true;
-      bufDescTable[clockHand].pinCnt += 1;
-      
-      // Sets page to equal a pointer to the frame containing the page
-      // IDK if this is correct. 
-      Page newPage = file.allocatePage();
-      page = &newPage;
-      // page = bufPool[bufDescTable[clockHand].frameNo];
-      return; 
-    }catch(const HashNotFoundException &e){
-      advanceClock();
-    }
+  }catch(const HashNotFoundException &e){
+    // Case 1: Page is not in buffer pool 
+    allocBuf(clockHand); // allocate Buffer frame 
+    bufPool[clockHand] = file.readPage(pageNo);// read page from disk to buffer pool frame 
+    hashTable.insert(file, pageNo, clockHand); // Insert page into hashtable 
+    bufDescTable[clockHand].Set(file, pageNo); // Set pinCnt to 1 
+
+    // Return pointer to frame containing page via page parameter. 
+    page = &bufPool[clockHand];
   }
-
-  // Case 1: Page is not in buffer pool. 
-  allocBuf(clockHand); // allocate a buffer frame. 
-  file.readPage(pageNo); // read page from disk into buffer pool frame. 
-  hashTable.insert(file, pageNo, clockHand); // Insert page into hashtable. 
-  bufDescTable[clockHand].Set(file, pageNo); // Set up page with refBit and pinCnt
-  // return a pointer to the frame containing the page via the page parameter. 
-  Page newPage = file.allocatePage();
-  page = &newPage;
 } 
 
 void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {
@@ -142,8 +130,20 @@ void BufMgr::unPinPage(File& file, const PageId pageNo, const bool dirty) {
 }
 
 void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
+  try{
+    hashTable.lookup(file, pageNo, clockHand);
+    std::cout << "HASH ALREADY PRESENT" << endl;
+    bufDescTable[clockHand].Print();
+    page = &bufPool[clockHand]; 
+    *page = bufPool[bufDescTable[clockHand].frameNo];
+    pageNo =  bufPool[bufDescTable[clockHand].frameNo].page_number();
+    return;
+  }catch(const HashNotFoundException &e ){
+    
+  }
+
   // Allocate an empty page in the specified file using file.allocatePage() 
-  Page newPage = file.allocatePage();
+  bufPool[clockHand] = file.allocatePage();
 
   // allocBuf() is called to obtain a buffer pool frame. 
   allocBuf(clockHand);
@@ -152,13 +152,13 @@ void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
   hashTable.insert(file, pageNo, clockHand);
 
   // Set is invoked on the frame 
-  bufDescTable[clockHand].Set(file, newPage.page_number());
+  bufDescTable[clockHand].Set(file, bufPool[clockHand].page_number());
 
   // return pageNumber of new page via pageNo & pointer to buffer frame via page parameter
   bufDescTable[clockHand].Print();
   page = &bufPool[clockHand]; 
-  *page = newPage;
-  pageNo = newPage.page_number();
+  *page = bufPool[clockHand];
+  pageNo = bufPool[clockHand].page_number();
 }
 
 void BufMgr::flushFile(File& file) {
@@ -168,7 +168,7 @@ void BufMgr::flushFile(File& file) {
       // Check if page is part of file 
       if(bufDescTable[currentFrame].valid == false){
         // Invalid Page
-        // throw BadBufferException();
+        // throw BadBufferException());
       }else if(bufDescTable[currentFrame].pinCnt > 0){
         // Page is currently Pinned
         // throw PagePinnedException("BufMgr::flushFile", pageNum);

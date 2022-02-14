@@ -16,6 +16,10 @@
 #include "page.h"
 #include "page_iterator.h"
 
+
+using std::cout; // the standard output
+using std::endl; // the end of line character, plus flushing the output
+
 #define PRINT_ERROR(str)                            \
   {                                                 \
     std::cerr << "On Line No:" << __LINE__ << "\n"; \
@@ -159,19 +163,25 @@ void testBufMgr() {
 void test1(File &file1) {
   // Allocating pages in a file...
   for (i = 0; i < num; i++) {
+    std::cout << i << "/" << num << endl;
     bufMgr->allocPage(file1, pid[i], page);
+    std::cout << "---completed allocPage" << endl;
     sprintf(tmpbuf, "test.1 Page %u %7.1f", pid[i], (float)pid[i]);
     rid[i] = page->insertRecord(tmpbuf);
     bufMgr->unPinPage(file1, pid[i], true);
   }
 
+  bufMgr->printSelf();
   // Reading pages back...
   for (i = 0; i < num; i++) {
+    std::cout << "Second for loop: " << endl;
     bufMgr->readPage(file1, pid[i], page);
     sprintf(tmpbuf, "test.1 Page %u %7.1f", pid[i], (float)pid[i]);
+    std::cout << "sprintf" << endl;
     if (strncmp(page->getRecord(rid[i]).c_str(), tmpbuf, strlen(tmpbuf)) != 0) {
       PRINT_ERROR("ERROR :: CONTENTS DID NOT MATCH");
     }
+    std::cout << "finished comparison" << endl;
     bufMgr->unPinPage(file1, pid[i], false);
   }
   std::cout << "Test 1 passed"
