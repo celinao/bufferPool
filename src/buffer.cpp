@@ -134,6 +134,13 @@ void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
     allocBuff(newFrame); // obtain buffer pool frame
     hashTable.insert(&file, &pageNo, newFrame); // insert new file into hash table
     file.Set(newFrame); // set frame in hash table
+    /*
+    The last line (call to Set()) seems like it won't work since I see no such method in File class. If it does, all good. If it doesn't, try this instead:-
+    
+    bufDescTable[newFrame].Set(file, pageNo);
+    
+    
+    */
     }
 
 void BufMgr::flushFile(File& file) {}
