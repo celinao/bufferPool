@@ -99,7 +99,6 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
   try{
     hashTable.lookup(file, pageNo, currentFrame);
     // Case 2: Page is in buffer pool
-    bufDescTable[currentFrame].Print(); 
     bufDescTable[currentFrame].refbit = true;
     bufDescTable[currentFrame].pinCnt += 1;
 
@@ -167,12 +166,11 @@ void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
 }
 
 void BufMgr::flushFile(File& file) {
-
+  
   // Scan bufDecTable for all pages belonging to file.
-  for(FrameId currentFrame = 0; currentFrame < bufDescTable.size(); currentFrame++){
-
+  for(FrameId currentFrame = 0; currentFrame < numBufs; currentFrame++){
     if(bufDescTable[currentFrame].file == file){ // Check if file matches
-      
+
       if(bufDescTable[currentFrame].valid == false){ // Invalid Page
         throw BadBufferException(currentFrame, bufDescTable[currentFrame].dirty, bufDescTable[currentFrame].valid, bufDescTable[currentFrame].refbit);
       }
@@ -185,18 +183,18 @@ void BufMgr::flushFile(File& file) {
         bufDescTable[currentFrame].file.writePage(bufPool[frameNum]);
         bufDescTable[currentFrame].dirty = false;
         hashTable.remove(file, bufDescTable[currentFrame].pageNo);
-        bufDescTable[currentFrame].clear();
+        // bufDescTable[currentFrame].clear();
 
       }else{
         // remove clean page
         hashTable.remove(file, bufDescTable[currentFrame].pageNo);
-        bufDescTable[currentFrame].clear();
+        // bufDescTable[currentFrame].clear();
       }
     }
   }
   
   // Clear file from bufferpool
-  // bufDescTable.clear();
+  bufDescTable.clear();
 }
 
 void BufMgr::disposePage(File& file, const PageId PageNo) {}
