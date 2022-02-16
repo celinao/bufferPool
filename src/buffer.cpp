@@ -56,7 +56,7 @@ void BufMgr::allocBuf(FrameId& frame) {
   std::uint32_t pinned_num = 0; // Keeps track of no.of pinned frames.
 
   while (pinned_num < numBufs) {
-    // advanceClock();
+    advanceClock();
     // Uses clock policy
 
     // If frame doesn't have a valid page, we can allocate directly.
@@ -64,27 +64,26 @@ void BufMgr::allocBuf(FrameId& frame) {
       frame = bufDescTable[clockHand].frameNo;
       return;
     }
+
+    // Valid Set? Yes
+
     // If frame contains a valid page, check for refbit.
-    if (bufDescTable[clockHand].refbit == true) {
+    if (bufDescTable[clockHand].refbit == true) { // Refbit? YES -> CLEAR REFBIT 
       bufDescTable[clockHand].refbit = false;
-      advanceClock();
-    }
-    else {
+      // advanceClock();
+    }else {
       // Increment pinned counter and clock if pinCnt is not 0.
-      if (bufDescTable[clockHand].pinCnt > 0) {
+      if (bufDescTable[clockHand].pinCnt > 0) { // PAGE PINNED? YES
         pinned_num++;
-        advanceClock();
+        // advanceClock();
       }
       // Flush before allocating frame if dirty and unpinned.
       else if (bufDescTable[clockHand].dirty == true) {
         flushFile(bufDescTable[clockHand].file);
         frame = bufDescTable[clockHand].frameNo;
         return;
-      }
-      
-      // Unpinned and unmodified frame can be allocated directly.
-      if (bufDescTable[clockHand].pinCnt == 0 && bufDescTable[clockHand].dirty == false) {
-        
+      }// Unpinned and unmodified frame can be allocated directly. 
+      else if (bufDescTable[clockHand].dirty == false) {
         frame = bufDescTable[clockHand].frameNo;
         return;
       }
@@ -107,11 +106,18 @@ void BufMgr::readPage(File& file, const PageId pageNo, Page*& page) {
 
   }catch(const HashNotFoundException &e){
     // Case 1: Page is not in buffer pool 
-    allocBuf(currentFrame); // allocate Buffer frame 
+    // allocate Buffer frame 
+    allocBuf(currentFrame); 
     
-    bufPool[currentFrame] = file.readPage(pageNo); // read page from disk to buffer pool frame 
-    hashTable.insert(file, bufPool[currentFrame].page_number(), currentFrame); // Insert page into hashtable 
-    bufDescTable[currentFrame].Set(file, bufPool[currentFrame].page_number()); // Set pinCnt to 1 
+    // read page from disk to buffer pool frame 
+    bufPool[currentFrame] = file.readPage(pageNo); 
+
+    // Set pinCnt to 1
+    bufDescTable[currentFrame].Set(file, bufPool[currentFrame].page_number());  
+
+    // Insert page into hashtable 
+    // hashTable.insert(file, bufPool[currentFrame].page_number(), bufDescTable[currentFrame].frameNo); 
+    hashTable.insert(file, bufPool[currentFrame].page_number(), currentFrame); 
 
     // Return pointer to frame containing page via page parameter. 
     page = &bufPool[currentFrame];
@@ -152,11 +158,11 @@ void BufMgr::allocPage(File& file, PageId& pageNo, Page*& page) {
   // Allocate an empty page in the specified file using file.allocatePage() 
   bufPool[frame] = file.allocatePage();
 
-  // entry is inserted into hashTable 
-  hashTable.insert(file, bufPool[frame].page_number(), frame);
-
   // Set is invoked on the frame 
   bufDescTable[frame].Set(file, bufPool[frame].page_number());
+  
+  // entry is inserted into hashTable 
+  hashTable.insert(file, bufPool[frame].page_number(), bufDescTable[frame].frameNo);
 
   // return pageNumber of new page via pageNo & pointer to buffer frame via page parameter
   page = &bufPool[frame]; 
@@ -178,23 +184,19 @@ void BufMgr::flushFile(File& file) {
         throw PagePinnedException("BufMgr::flushFile", bufDescTable[currentFrame].pageNo, currentFrame);
       }
       else if (bufDescTable[currentFrame].dirty){
-        FrameId frameNum = bufDescTable[currentFrame].frameNo;
+
         // write dirty page and remove
-        bufDescTable[currentFrame].file.writePage(bufPool[frameNum]);
+        bufDescTable[currentFrame].file.writePage(bufPool[currentFrame]);
         bufDescTable[currentFrame].dirty = false;
         hashTable.remove(file, bufDescTable[currentFrame].pageNo);
-        // bufDescTable[currentFrame].clear();
-
+        bufDescTable[currentFrame].clear();
       }else{
         // remove clean page
         hashTable.remove(file, bufDescTable[currentFrame].pageNo);
-        // bufDescTable[currentFrame].clear();
+        bufDescTable[currentFrame].clear();
       }
     }
   }
-  
-  // Clear file from bufferpool
-  bufDescTable.clear();
 }
 
 void BufMgr::disposePage(File& file, const PageId PageNo) {}
