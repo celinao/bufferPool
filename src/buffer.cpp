@@ -204,8 +204,8 @@ void BufMgr::disposePage(File& file, const PageId PageNo) {
 
   try{
     // not sure if pincnt matters ???
-    hashTable.lookup(file, pageNo, frame); // check if page exists in bufferpool
-    hashTable.remove(file, pageNo); // remove if exists
+    hashTable.lookup(file, PageNo, frame); // check if page exists in bufferpool
+    hashTable.remove(file, PageNo); // remove if exists
     bufDescTable[frame].clear();
     file.deletePage(PageNo);
 
