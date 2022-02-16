@@ -200,13 +200,18 @@ void BufMgr::flushFile(File& file) {
 }
 
 void BufMgr::disposePage(File& file, const PageId PageNo) {
-    try{
-        hashTable.lookup(&file, pageNo, &clockHand);
-    } catch(HashNotFoundException e){
-        return;
-    }
+  FrameId frame;
+
+  try{
+    // not sure if pincnt matters ???
+    hashTable.lookup(file, pageNo, frame); // check if page exists in bufferpool
+    hashTable.remove(file, pageNo); // remove if exists
+    bufDescTable[frame].clear();
     file.deletePage(PageNo);
-    hashTable.remove(&file, pageNo);
+
+  } catch(const HashNotFoundException &e) {  
+    file.deletePage(PageNo); //del page from file
+  }  
 }
 
 void BufMgr::printSelf(void) {
