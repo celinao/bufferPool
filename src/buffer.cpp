@@ -199,7 +199,15 @@ void BufMgr::flushFile(File& file) {
   }
 }
 
-void BufMgr::disposePage(File& file, const PageId PageNo) {}
+void BufMgr::disposePage(File& file, const PageId PageNo) {
+    try{
+        hashTable.lookup(&file, pageNo, &clockHand);
+    } catch(HashNotFoundException e){
+        return;
+    }
+    file.deletePage(PageNo);
+    hashTable.remove(&file, pageNo);
+}
 
 void BufMgr::printSelf(void) {
   int validFrames = 0;
